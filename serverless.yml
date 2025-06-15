@@ -1,0 +1,56 @@
+service: mypdf
+frameworkVersion: "3"
+
+provider:
+  name: aws
+  runtime: python3.9
+  region: us-east-1
+  ecr:
+    images:
+      mypdf:
+        path: ./
+  docker:
+    command: podman
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "ssm:GetParameter"
+      Resource:
+        - "*"
+    - Effect: "Allow"
+      Action:
+        - "s3:GetObject"
+        - "s3:PutObject"
+        - "s3:HeadObject"
+      Resource:
+        - "arn:aws:s3:::${self:custom.s3Bucket}/*"
+        - "arn:aws:s3:::${self:custom.s3Bucket}"
+    - Effect: "Allow"
+      Action:
+        - "dynamodb:*"
+      Resource:
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/*"
+
+plugins:
+  - serverless-hooks-plugin
+custom:
+  s3Bucket: zsbtest
+  hooks:
+    "package:initialize":
+      - echo "begin build container..."
+      - podman build -t 730335571595.dkr.ecr.us-east-1.amazonaws.com/zsbtestecr:mypdf .
+      - echo "begin push container..."
+      - podman push 730335571595.dkr.ecr.us-east-1.amazonaws.com/zsbtestecr:mypdf
+
+functions:
+  api:
+    image: 730335571595.dkr.ecr.us-east-1.amazonaws.com/zsbtestecr:mypdf
+    timeout: 30
+    memorySize: 512
+    events:
+      - httpApi:
+          path: /choose_graph_type
+          method: post
+      - httpApi:
+          path: /save_report_settings
+          method: post

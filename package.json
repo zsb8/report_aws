@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "serverless-hooks-plugin": "^1.1.0"
+  }
+}
